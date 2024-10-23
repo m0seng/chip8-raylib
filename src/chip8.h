@@ -5,12 +5,12 @@
 
 #define BUFFER_SIZE 1024
 #define RAM_SIZE 4096
-#define STACK_SIZE 12
+#define STACK_SIZE 16
 #define DISPLAY_WIDTH 64
 #define DISPLAY_HEIGHT 32
-#define PIXEL_COUNT DISPLAY_WIDTH*DISPLAY_HEIGHT
-#define DISPLAY_ARRAY_SIZE PIXEL_COUNT/8
+#define PIXEL_COUNT (DISPLAY_WIDTH * DISPLAY_HEIGHT)
 #define FONT_HEIGHT 5
+#define FONT_OFFSET (0x50)
 
 #define SCHIP false
 
@@ -37,7 +37,7 @@ typedef struct Chip8 {
 
   bool keys[16];
 
-  uint8_t display[DISPLAY_ARRAY_SIZE];
+  uint8_t display[DISPLAY_HEIGHT][DISPLAY_WIDTH];
 } Chip8;
 
 void init_chip(Chip8 *chip);

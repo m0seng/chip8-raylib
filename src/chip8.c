@@ -28,8 +28,10 @@ uint16_t bcd(uint8_t x) {
 }
 
 void clear_display(Chip8 *chip) {
-  for (int j = 0; j < DISPLAY_ARRAY_SIZE; j++) {
-    chip->display[j] = 0;
+  for (int y = 0; y < DISPLAY_HEIGHT; y++) {
+    for (int x = 0; x < DISPLAY_WIDTH; x++) {
+      chip->display[y][x] = 0;
+    }
   }
 }
 
@@ -54,7 +56,7 @@ void init_chip(Chip8 *chip) {
   };
 
   for (int j = 0; j < 80; j++) {
-    chip->ram[j] = font[j];
+    chip->ram[j + FONT_OFFSET] = font[j];
   }
 
   for (int j = 0; j < 16; j++) {
@@ -103,12 +105,15 @@ int arithmetic(Chip8 *chip, uint16_t instr) {
       break;
     case 0x1:
       v[x] |= v[y];
+      // v[0xF] = 0; // ambiguous?
       break;
     case 0x2:
       v[x] &= v[y];
+      // v[0xF] = 0; // ambiguous?
       break;
     case 0x3:
       v[x] ^= v[y];
+      // v[0xF] = 0; // ambiguous?
       break;
 
     case 0x4: {
@@ -286,8 +291,13 @@ int execute(Chip8 *chip, uint16_t instr, int key_pressed) {
       break;
 
     case 0xB:
+      #if SCHIP
+      // BXNN: jump to NNN + Vx
+      chip->pc = nnn + chip->v[x];
+      #else
       // BNNN: jump to NNN + V0
       chip->pc = nnn + chip->v[0];
+      #endif
       break;
     
     case 0xC:
@@ -306,43 +316,21 @@ int execute(Chip8 *chip, uint16_t instr, int key_pressed) {
       int vx = chip->v[x] % DISPLAY_WIDTH;
       int vy = chip->v[y] % DISPLAY_HEIGHT;
 
-      int x_byte_index = vx / 8;
-      int x_byte_offset = vx % 8;
-
-      // sy = y coordinate in sprite
+      int addr = chip->i;
       for (int sy = 0; sy < n; sy++) {
-        // only draw lines on screen
-        int dy = vy + sy;
-        if (dy < DISPLAY_HEIGHT) {
-          // get sprite line
-          uint16_t addr = (chip->i + sy) % MASK(0, 12);
-          uint8_t s_line = chip->ram[addr];
-
-          // definitely draw in left byte
-          uint8_t s_left = s_line << x_byte_offset;
-          int d_index = dy * (DISPLAY_WIDTH / 8) + x_byte_index;
-          uint8_t *d_left = &(chip->display[d_index]);
-          uint8_t new_left = s_left ^ *d_left;
-
-          // are any bits being erased?
-          uint8_t erased_left = *d_left & ~new_left;
-          erased = erased_left ? true : erased;
-          *d_left = new_left; // draw to display
-
-          // then maybe draw in right byte (only if in bounds!)
-          if (x_byte_offset > 0 && vx + 8 <= DISPLAY_WIDTH) {
-            uint8_t s_right = s_line >> (8 - x_byte_offset);
-            d_index = dy * (DISPLAY_WIDTH / 8) + x_byte_index + 1;
-            uint8_t *d_right = &(chip->display[d_index]);
-            uint8_t new_right = s_right ^ *d_right;
-
-            // are any bits being erased?
-            uint8_t erased_right = *d_right & ~new_right;
-            erased = erased_right ? true : erased;
-            *d_right = new_right; // draw to display
+        for (int sx = 0; sx < 8; sx++) {
+          if (vy + sy < DISPLAY_HEIGHT && vx + sx < DISPLAY_WIDTH) {
+            uint8_t source = chip->ram[addr] & (1 << (7 - sx)) ? 0xFF : 0x00;
+            uint8_t *target = &(chip->display[vy+sy][vx+sx]);
+            *target ^= source;
+            if (source && !(*target)) {
+              erased = true;
+            }
           }
         }
+        addr++;
       }
+
       chip->v[0xF] = erased ? 1 : 0;
     } break;
 
@@ -400,7 +388,7 @@ int execute(Chip8 *chip, uint16_t instr, int key_pressed) {
           // FX29: I = location of sprite for character Vx
           // assume font is stored from 0x000 with height FONT_HEIGHT
           uint8_t char_index = chip->v[x] & MASK(0, 4);
-          chip->i = char_index * FONT_HEIGHT;
+          chip->i = FONT_OFFSET + (char_index * FONT_HEIGHT);
         } break;
         case 0x33: {
           // FX33: store BCD of Vx at *I

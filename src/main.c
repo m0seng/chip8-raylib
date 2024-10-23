@@ -28,31 +28,25 @@ For a C++ project simply rename the file to .cpp and re-run the build script
 #include "chip8.h"
 
 #define WINDOW_SCALE 10
-#define CYCLES_PER_FRAME 9
+#define CYCLES_PER_FRAME 12
 
 int keymap[16] = {
-	KEY_KP_1, KEY_KP_2, KEY_KP_3,
+	KEY_X,
+	KEY_ONE, KEY_TWO, KEY_THREE,
 	KEY_Q, KEY_W, KEY_E,
 	KEY_A, KEY_S, KEY_D,
-	KEY_X, KEY_Z, KEY_C,
-	KEY_KP_4, KEY_R, KEY_F, KEY_V
+	KEY_Z, KEY_C,
+	KEY_FOUR, KEY_R, KEY_F, KEY_V
 };
-
-void display_to_pixels(uint8_t *display, uint8_t *pixels) {
-	for (int j = 0; j < DISPLAY_ARRAY_SIZE; j++) {
-		uint8_t d_byte = display[j];
-		for (int bit = 0; bit < 8; bit++) {
-			pixels[8*j+bit] = d_byte & (1<<bit) ? 0xFF : 0x00;
-		}
-	}
-}
 
 int main(int argc, char **argv)
 {
 	Chip8 chip;
 	init_chip(&chip);
-	load_rom_from_file(&chip, "/home/mos/REPOS/MISC/chip8-test-suite/bin/1-chip8-logo.ch8");
-	uint8_t pixels[PIXEL_COUNT];
+	load_rom_from_file(
+		&chip,
+		"/home/mos/Downloads/15 Puzzle [Roger Ivie] (alt).ch8"
+	);
 	bool prev_keys[16];
 
 	// Tell the window to use vysnc and work on high DPI displays
@@ -67,7 +61,7 @@ int main(int argc, char **argv)
 	);
 
 	Image screen_image = {
-		.data = pixels,
+		.data = chip.display,
 		.width = DISPLAY_WIDTH,
 		.height = DISPLAY_HEIGHT,
 		.format = PIXELFORMAT_UNCOMPRESSED_GRAYSCALE,
@@ -77,7 +71,7 @@ int main(int argc, char **argv)
 	Texture2D screen_texture = LoadTextureFromImage(screen_image);
 	
 	// game loop
-	while (!WindowShouldClose())		// run the loop untill the user presses ESCAPE or presses the Close button on the window
+	while (!WindowShouldClose())
 	{
 		// deal with input
 		int key_pressed = -1;
@@ -86,6 +80,7 @@ int main(int argc, char **argv)
 			int keycode = keymap[index];
 			chip.keys[index] = IsKeyDown(keycode);
 
+			// I do this based on key press, not key release
 			if (key_pressed == -1 && chip.keys[index] && !prev_keys[index]) {
 				key_pressed = index;
 			}
@@ -95,13 +90,20 @@ int main(int argc, char **argv)
 		for (int cycle = 0; cycle < CYCLES_PER_FRAME; cycle++) {
 			uint16_t instr = fetch(&chip);
 			int result = execute(&chip, instr, key_pressed);
-			printf("exec once, PC = %#04x, instr = %#04x, with return code %d\n", chip.pc, instr, result);
+			// printf("exec once, PC = %#04x, instr = %#04x, with return code %d\n", chip.pc, instr, result);
 			key_pressed = -1;
 		}
 
-		// draw to pixels array and send to texture
-		display_to_pixels(chip.display, pixels);
-		UpdateTexture(screen_texture, pixels);
+		// decrement clocks if > 0!
+		if (chip.delay > 0) {
+			chip.delay--;
+		}
+		if (chip.sound > 0) {
+			chip.sound--;
+		}
+
+		// send display array straight to texture
+		UpdateTexture(screen_texture, chip.display);
 
 		// drawing
 		BeginDrawing();
@@ -117,6 +119,8 @@ int main(int argc, char **argv)
 		
 		// end the frame and get ready for the next one  (display frame, poll input, etc...)
 		EndDrawing();
+
+		// printf("FPS: %d\n",GetFPS());
 	}
 
 	// destory the window and cleanup the OpenGL context
