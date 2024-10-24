@@ -292,11 +292,11 @@ int execute(Chip8 *chip, uint16_t instr, int key_pressed) {
 
     case 0xB:
       #if SCHIP
-      // BXNN: jump to NNN + Vx
-      chip->pc = nnn + chip->v[x];
+        // BXNN: jump to NNN + Vx
+        chip->pc = nnn + chip->v[x];
       #else
-      // BNNN: jump to NNN + V0
-      chip->pc = nnn + chip->v[0];
+        // BNNN: jump to NNN + V0
+        chip->pc = nnn + chip->v[0];
       #endif
       break;
     
@@ -308,7 +308,6 @@ int execute(Chip8 *chip, uint16_t instr, int key_pressed) {
     case 0xD: {
       // DXYN: draw N-tall sprite at (Vx, Vy) from *I
       // VF = 1 iff any pixels 1 -> 0
-      // TODO: refactor this it is bad
 
       bool erased = false;
 
@@ -316,19 +315,22 @@ int execute(Chip8 *chip, uint16_t instr, int key_pressed) {
       int vx = chip->v[x] % DISPLAY_WIDTH;
       int vy = chip->v[y] % DISPLAY_HEIGHT;
 
-      int addr = chip->i;
       for (int sy = 0; sy < n; sy++) {
         for (int sx = 0; sx < 8; sx++) {
           if (vy + sy < DISPLAY_HEIGHT && vx + sx < DISPLAY_WIDTH) {
-            uint8_t source = chip->ram[addr] & (1 << (7 - sx)) ? 0xFF : 0x00;
+            // shift by (7 - sx) instead of sx is to deal with endianness
+            uint8_t source = (
+              chip->ram[(chip->i + sy) & MASK(0, 12)]
+              & (1 << (7 - sx))
+            ) ? 0xFF : 0x00;
+
             uint8_t *target = &(chip->display[vy+sy][vx+sx]);
             *target ^= source;
-            if (source && !(*target)) {
+            if (source & ~(*target)) {
               erased = true;
             }
           }
         }
-        addr++;
       }
 
       chip->v[0xF] = erased ? 1 : 0;
@@ -405,14 +407,22 @@ int execute(Chip8 *chip, uint16_t instr, int key_pressed) {
           for (int j = 0; j <= x; j++) {
             chip->ram[i + j] = chip->v[j];
           }
+          #if !(SCHIP)
+            // CHIP8 sets I past range of store
+            chip->i += x + 1;
+          #endif
         } break;
         case 0x65: {
-          // FX65: fill V0 to Vx inclusive from *I
+          // FX65: load V0 to Vx inclusive from *I
           // mask I to 12 bits first
           uint16_t i = chip->i & MASK(0, 12);
           for (int j = 0; j <= x; j++) {
             chip->v[j] = chip->ram[i + j];
           }
+          #if !(SCHIP)
+            // CHIP8 sets I past range of load
+            chip->i += x + 1;
+          #endif
         } break;
         default:
           return C8_INVALID_INSTRUCTION;

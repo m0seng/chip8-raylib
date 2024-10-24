@@ -26,6 +26,7 @@ For a C++ project simply rename the file to .cpp and re-run the build script
 
 #include "raylib.h"
 #include "chip8.h"
+#include <time.h>
 
 #define WINDOW_SCALE 10
 #define CYCLES_PER_FRAME 12
@@ -45,7 +46,7 @@ int main(int argc, char **argv)
 	init_chip(&chip);
 	load_rom_from_file(
 		&chip,
-		"/home/mos/Downloads/15 Puzzle [Roger Ivie] (alt).ch8"
+		"/home/mos/Downloads/octojam5title.ch8"
 	);
 	bool prev_keys[16];
 
@@ -69,10 +70,21 @@ int main(int argc, char **argv)
 	};
 
 	Texture2D screen_texture = LoadTextureFromImage(screen_image);
+
+	// seed random
+	srand(time(NULL));
 	
 	// game loop
 	while (!WindowShouldClose())
 	{
+		// decrement clocks if > 0!
+		if (chip.delay > 0) {
+			chip.delay--;
+		}
+		if (chip.sound > 0) {
+			chip.sound--;
+		}
+		
 		// deal with input
 		int key_pressed = -1;
 		for (int index = 0; index < 16; index++) {
@@ -92,14 +104,6 @@ int main(int argc, char **argv)
 			int result = execute(&chip, instr, key_pressed);
 			// printf("exec once, PC = %#04x, instr = %#04x, with return code %d\n", chip.pc, instr, result);
 			key_pressed = -1;
-		}
-
-		// decrement clocks if > 0!
-		if (chip.delay > 0) {
-			chip.delay--;
-		}
-		if (chip.sound > 0) {
-			chip.sound--;
 		}
 
 		// send display array straight to texture
