@@ -46,7 +46,7 @@ int main(int argc, char **argv)
 	init_chip(&chip);
 	load_rom_from_file(
 		&chip,
-		// "/home/mos/REPOS/MISC/chip8-test-suite/bin/3-corax+.ch8"
+		// "/home/mos/REPOS/MISC/chip8-test-suite/bin/6-keypad.ch8"
 		"/home/mos/Downloads/danm8ku.ch8"
 	);
 	bool prev_keys[16];
@@ -133,7 +133,9 @@ int main(int argc, char **argv)
 		Rectangle source = {0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT};
 		Rectangle dest = {0, 0, DISPLAY_WIDTH * WINDOW_SCALE, DISPLAY_HEIGHT * WINDOW_SCALE};
 		Vector2 origin = {0.0f, 0.0f};
-		DrawTexturePro(screen_texture, source, dest, origin, 0.0f, GREEN);
+		DrawTexturePro(screen_texture, source, dest, origin, 0.0f, RAYWHITE);
+
+		DrawFPS(0, 0);
 		
 		// end the frame and get ready for the next one  (display frame, poll input, etc...)
 		EndDrawing();
