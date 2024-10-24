@@ -47,7 +47,7 @@ int main(int argc, char **argv)
 	load_rom_from_file(
 		&chip,
 		// "/home/mos/REPOS/MISC/chip8-test-suite/bin/6-keypad.ch8"
-		"/home/mos/Downloads/danm8ku.ch8"
+		"/home/mos/ROMs/CHIP-8/1dcell.ch8"
 	);
 	bool prev_keys[16];
 
@@ -140,6 +140,9 @@ int main(int argc, char **argv)
 		// end the frame and get ready for the next one  (display frame, poll input, etc...)
 		EndDrawing();
 	}
+
+	UnloadTexture(screen_texture);
+	UnloadImage(screen_image);
 
 	// destory the window and cleanup the OpenGL context
 	CloseWindow();
