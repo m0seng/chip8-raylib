@@ -13,6 +13,10 @@
 #define FONT_OFFSET (0x50)
 
 #define SCHIP false
+#define QUIRK_DISPLAY_WAIT false
+#define QUIRK_KEY_RELEASE true
+#define QUIRK_LOGIC_VF false
+#define QUIRK_CLIPPING false
 
 enum C8Error {
   C8_SUCCESS,
@@ -20,6 +24,7 @@ enum C8Error {
   C8_STACK_OVERFLOW,
   C8_STACK_UNDERFLOW,
   C8_AWAIT_KEYPRESS,
+  C8_AWAIT_REFRESH,
 };
 
 typedef struct Chip8 {
@@ -43,4 +48,4 @@ typedef struct Chip8 {
 void init_chip(Chip8 *chip);
 void load_rom_from_file(Chip8 *chip, char *filename);
 uint16_t fetch(Chip8 *chip);
-int execute(Chip8 *chip, uint16_t instr, int key_pressed);
+int execute(Chip8 *chip, uint16_t instr, int key_pressed, bool display_waited);

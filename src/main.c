@@ -29,7 +29,7 @@ For a C++ project simply rename the file to .cpp and re-run the build script
 #include <time.h>
 
 #define WINDOW_SCALE 10
-#define CYCLES_PER_FRAME 12
+#define CYCLES_PER_FRAME 1000
 
 int keymap[16] = {
 	KEY_X,
@@ -46,7 +46,8 @@ int main(int argc, char **argv)
 	init_chip(&chip);
 	load_rom_from_file(
 		&chip,
-		"/home/mos/Downloads/octojam5title.ch8"
+		// "/home/mos/REPOS/MISC/chip8-test-suite/bin/3-corax+.ch8"
+		"/home/mos/Downloads/danm8ku.ch8"
 	);
 	bool prev_keys[16];
 
@@ -92,18 +93,31 @@ int main(int argc, char **argv)
 			int keycode = keymap[index];
 			chip.keys[index] = IsKeyDown(keycode);
 
-			// I do this based on key press, not key release
-			if (key_pressed == -1 && chip.keys[index] && !prev_keys[index]) {
+			// adjust waiting for key press or key release depending on quirk
+			if (
+				key_pressed == -1 && (
+					(!QUIRK_KEY_RELEASE && chip.keys[index] && !prev_keys[index])
+					|| (QUIRK_KEY_RELEASE && !chip.keys[index] && prev_keys[index])
+				)
+			) {
 				key_pressed = index;
 			}
 		}
 
+		bool display_waited = true;
 		// simulate a few cycles
 		for (int cycle = 0; cycle < CYCLES_PER_FRAME; cycle++) {
+			// printf("%d\n", chip.pc);
 			uint16_t instr = fetch(&chip);
-			int result = execute(&chip, instr, key_pressed);
-			// printf("exec once, PC = %#04x, instr = %#04x, with return code %d\n", chip.pc, instr, result);
+			int result = execute(&chip, instr, key_pressed, display_waited);
+			if (
+				((result == C8_AWAIT_REFRESH) && QUIRK_DISPLAY_WAIT)
+				|| result == C8_AWAIT_KEYPRESS
+			) {
+				break; // just skip ahead to next frame
+			}
 			key_pressed = -1;
+			display_waited = false;
 		}
 
 		// send display array straight to texture
@@ -119,12 +133,10 @@ int main(int argc, char **argv)
 		Rectangle source = {0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT};
 		Rectangle dest = {0, 0, DISPLAY_WIDTH * WINDOW_SCALE, DISPLAY_HEIGHT * WINDOW_SCALE};
 		Vector2 origin = {0.0f, 0.0f};
-		DrawTexturePro(screen_texture, source, dest, origin, 0.0f, RAYWHITE);
+		DrawTexturePro(screen_texture, source, dest, origin, 0.0f, GREEN);
 		
 		// end the frame and get ready for the next one  (display frame, poll input, etc...)
 		EndDrawing();
-
-		// printf("FPS: %d\n",GetFPS());
 	}
 
 	// destory the window and cleanup the OpenGL context
