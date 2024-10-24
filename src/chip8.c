@@ -317,18 +317,19 @@ int execute(Chip8 *chip, uint16_t instr, int key_pressed) {
 
       for (int sy = 0; sy < n; sy++) {
         for (int sx = 0; sx < 8; sx++) {
-          if (vy + sy < DISPLAY_HEIGHT && vx + sx < DISPLAY_WIDTH) {
-            // shift by (7 - sx) instead of sx is to deal with endianness
-            uint8_t source = (
-              chip->ram[(chip->i + sy) & MASK(0, 12)]
-              & (1 << (7 - sx))
-            ) ? 0xFF : 0x00;
+          // NOTE: allowing sprite wrap for now cos it might fix things
+          // shift by (7 - sx) instead of sx is to deal with endianness
+          uint8_t source = (
+            chip->ram[(chip->i + sy) & MASK(0, 12)]
+            & (1 << (7 - sx))
+          ) ? 0xFF : 0x00;
 
-            uint8_t *target = &(chip->display[vy+sy][vx+sx]);
-            *target ^= source;
-            if (source & ~(*target)) {
-              erased = true;
-            }
+          uint8_t *target = &(
+            chip->display[(vy+sy) % DISPLAY_HEIGHT][(vx+sx) % DISPLAY_WIDTH]
+          );
+          *target ^= source;
+          if (source & ~(*target)) {
+            erased = true;
           }
         }
       }
